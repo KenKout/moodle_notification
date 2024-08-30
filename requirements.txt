@@ -1,0 +1,5 @@
+requests~=2.32.3
+python-dotenv~=1.0.1
+pymongo~=4.8.0
+html2text
+flask
