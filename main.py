@@ -7,8 +7,17 @@ from flask import Flask
 from env import *
 import threading
 
+import logging
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
 DATA_COURSE = []
+
+
 class MOODLE_NOTI:
     NON_CHANGE = {'added': [], 'removed': [], 'changed': []}
 
@@ -33,7 +42,7 @@ class MOODLE_NOTI:
             '<input type="hidden" name="execution" value="')[1].split('" />')[0]
         data = f"username={USERNAME}&password={PASSWORD}&execution={execution}&_eventId=submit&submit=Login&lt={lt}"
         resp = self.s.post(url, headers=headers, data=data)
-        print('Function - Login: Success')
+        logger.info('Function - Login: Success')
 
     def login_moodle(self):
         if TYPE_SSO == 'CAS':
@@ -48,7 +57,7 @@ class MOODLE_NOTI:
             raw_token = login.headers['location'].split('token=')[1]
             import base64
             self.token = base64.b64decode(raw_token).decode('utf-8').split(':::')[1]
-            print('Token:', self.token)
+            logger.info('Token:', self.token)
         else:
             url = URL_LOGIN + 'login/token.php'
             data = {
@@ -101,11 +110,6 @@ class MOODLE_NOTI:
 def refresh_course(lms):
     while True:
         moodle.get_course()
-        # for course in moodle.total_course:
-        #     data = moodle.get_course_detail(course['id'])
-        #     process_data = moodle.process_data(data)
-        #     print(process_data)
-        # import time
         time.sleep(3600)
 
 
@@ -118,6 +122,9 @@ def FlaskApp():
 
 
 if __name__ == '__main__':
+    if not USERNAME or not PASSWORD:
+        logger.error('Please provide username and password')
+        exit()
     if HUGGINGFACE:
         threading.Thread(target=FlaskApp).start()
     moodle = MOODLE_NOTI()
@@ -126,7 +133,7 @@ if __name__ == '__main__':
     for course in moodle.total_course:
         DATA_COURSE.append({"id": course['id'], "data": moodle.process_data(moodle.get_course_detail(course['id']))})
     DATA_COURSE.sort(key=lambda x: x['id'])
-    print('Get course: Done')
+    logger.info('Get course success')
     while True:
         time.sleep(TIME_SLEEP)
         DATA_COURSE_NEW = []
@@ -134,25 +141,25 @@ if __name__ == '__main__':
             DATA_COURSE_NEW.append({"id": course['id'], "data": moodle.process_data(moodle.get_course_detail(course['id']))})
         DATA_COURSE_NEW.sort(key=lambda x: x['id'])
         if DATA_COURSE_NEW != DATA_COURSE:
-            print('Change Detected')
+            logger.info('Change detected')
             ID = [x['id'] for x in DATA_COURSE]
             for data_old in DATA_COURSE:
                 for data_new in DATA_COURSE_NEW:
                     if data_new['id'] not in ID:
-                        print('New course:', data_new['id'])
+                        logger.info('New course:', data_new['id'])
                         send_notification(moodle.NON_CHANGE.copy()['added'].append({'name': data_new['id'], 'url': f'https://moodle.hcmut.edu.vn/course/view.php?id={data_new["id"]}'}))
                         DATA_COURSE.append(data_new)
                         break
                     if data_old['id'] == data_new['id']:
                         if data_old['data'] == data_new['data']:
-                            print('Data ID:', data_old['id'], 'does not change')
+                            logger.info('Data ID:', data_old['id'], 'does not change')
                             break
                         changes = diff_compare(data_old['data'], data_new['data'])
                         if changes != moodle.NON_CHANGE:
-                            print(changes)
+                            logger.info('Change data: ', changes)
                             send_notification(changes)
                             DATA_COURSE.remove(data_old)
                             DATA_COURSE.append(data_new)
                             break
         else:
-            print('No change, sleep 5 minutes')
+            logger.info('No change, sleep 5 minutes')
