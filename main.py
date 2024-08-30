@@ -57,7 +57,7 @@ class MOODLE_NOTI:
             raw_token = login.headers['location'].split('token=')[1]
             import base64
             self.token = base64.b64decode(raw_token).decode('utf-8').split(':::')[1]
-            logger.info('Token:', self.token)
+            logger.info(f'Token: {self.token}')
         else:
             url = URL_LOGIN + 'login/token.php'
             data = {
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     for course in moodle.total_course:
         DATA_COURSE.append({"id": course['id'], "data": moodle.process_data(moodle.get_course_detail(course['id']))})
     DATA_COURSE.sort(key=lambda x: x['id'])
-    logger.info('Get course success')
+    logger.info(f'Get course success. Total courses: {len(DATA_COURSE)}')
     while True:
         time.sleep(TIME_SLEEP)
         DATA_COURSE_NEW = []
@@ -146,17 +146,17 @@ if __name__ == '__main__':
             for data_old in DATA_COURSE:
                 for data_new in DATA_COURSE_NEW:
                     if data_new['id'] not in ID:
-                        logger.info('New course:', data_new['id'])
+                        logger.info(f'New course: {data_new["id"]}')
                         send_notification(moodle.NON_CHANGE.copy()['added'].append({'name': data_new['id'], 'url': f'https://moodle.hcmut.edu.vn/course/view.php?id={data_new["id"]}'}))
                         DATA_COURSE.append(data_new)
                         break
                     if data_old['id'] == data_new['id']:
                         if data_old['data'] == data_new['data']:
-                            logger.info('Data ID:', data_old['id'], 'does not change')
+                            logger.info(f'Data ID: {data_old["id"]} does not change')
                             break
                         changes = diff_compare(data_old['data'], data_new['data'])
                         if changes != moodle.NON_CHANGE:
-                            logger.info('Change data: ', changes)
+                            logger.info(f'Change data: {changes}')
                             send_notification(changes)
                             DATA_COURSE.remove(data_old)
                             DATA_COURSE.append(data_new)
