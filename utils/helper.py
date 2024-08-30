@@ -114,7 +114,7 @@ def send_notification(data):
                 "description": f"Click title to check new content.",
                 "color": random.randint(1000000, 9999999),
                 "fields": [],
-                "url": change['url'],
+                "url": change['url'] if 'url' in change else '',
             }],
             "components": [],
             "actions": {},
@@ -123,7 +123,7 @@ def send_notification(data):
             "avatar_url":
                 "https://i.imgur.com/PX6pxLS.png"
         }
-        print(requests.post(WEBHOOK_URL, json=payload).text)
+        requests.post(WEBHOOK_URL, json=payload)
     for change in data['removed']:
         payload = {
             "content":
@@ -135,7 +135,7 @@ def send_notification(data):
                 "description": f"Click title to check removed content.",
                 "color": random.randint(1000000, 9999999),
                 "fields": [],
-                "url": change['url'],
+                "url": change['url'] if 'url' in change else '',
             }],
             "components": [],
             "actions": {},
@@ -146,44 +146,35 @@ def send_notification(data):
         }
         requests.post(WEBHOOK_URL, json=payload)
     for change in data['changed']:
-        payload = {
-            "content":
-                "",
-            "tts":
-                False,
-            "embeds": [{
-                "title": f"Content changed: {change['name']}",
-                "description": f"Click title to check changed content.",
-                "color": random.randint(1000000, 9999999),
-                "fields": [],
-                "url": change['url'],
-            }],
-            "components": [],
-            "actions": {},
-            "username":
-                "E-Learning Notification",
-            "avatar_url":
-                "https://i.imgur.com/PX6pxLS.png"
-        }
-        requests.post(WEBHOOK_URL, json=payload)
-    for change in data["changed"]:
-        payload = {
-            "content":
-                "",
-            "tts":
-                False,
-            "embeds": [{
-                "title": f"Content changed in {change['name']}",
-                "description": f"Click title to check changed content.",
-                "color": random.randint(1000000, 9999999),
-                "fields": [],
-                "url": change['url'],
-            }],
-            "components": [],
-            "actions": {},
-            "username":
-                "E-Learning Notification",
-            "avatar_url":
-                "https://i.imgur.com/PX6pxLS.png"
-        }
-        requests.post(WEBHOOK_URL, json=payload)
+        for key in change:
+            if '_old' in key:
+                payload = {
+                    "content":
+                        "",
+                    "tts":
+                        False,
+                    "embeds": [{
+                        "title": f"Content changed: {change['name']}",
+                        "description": f"Click title to check changed content.",
+                        "color": random.randint(1000000, 9999999),
+                        "fields": [{
+                            "name": f"Old {key.split('_')[0]}",
+                            "value": change[key],
+                            "inline": False
+                        },
+                        {
+                            "name": f"New {key.split('_')[0]}",
+                            "value": change[key.replace('_old', '')],
+                            "inline": False
+                        }
+                        ],
+                        "url": change['url'] if 'url' in change else '',
+                    }],
+                    "components": [],
+                    "actions": {},
+                    "username":
+                        "E-Learning Notification",
+                    "avatar_url":
+                        "https://i.imgur.com/PX6pxLS.png"
+                }
+                requests.post(WEBHOOK_URL, json=payload)
