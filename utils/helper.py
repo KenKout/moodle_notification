@@ -3,6 +3,7 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 import requests
 import random
+from utils.config import *
 
 def convert_html_to_text(html_content):
 
