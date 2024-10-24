@@ -10,4 +10,5 @@ TYPE_SSO = os.getenv('TYPE_SSO', 'CAS')
 MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017/')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'https://discord.com/api/webhooks/')
 TIME_SLEEP = int(os.getenv('TIME_SLEEP', 300))
-HUGGINGFACE = os.getenv('HUGGINGFACE', False)
+HUGGINGFACE = os.getenv('HUGGINGFACE', 'false').lower()
+HUGGINGFACE = True if HUGGINGFACE == 'true' else False
