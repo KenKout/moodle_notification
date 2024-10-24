@@ -161,8 +161,7 @@ class MOODLE_NOTI:
             if retries > 0:
                 return self.get_course_detail(courseid, retries - 1)
             else:
-                return []
-
+                raise e
 
     def process_data(self, data):
         return_data = []
@@ -197,7 +196,7 @@ def threading_get_course_detail(moodle, courseid):
         return data
     except Exception as e:
         logger.error(f'Error processing course {courseid}: {e}')
-        return None
+        raise e
 
 
 if __name__ == '__main__':
@@ -207,19 +206,34 @@ if __name__ == '__main__':
     if HUGGINGFACE:
         threading.Thread(target=FlaskApp).start()
     moodle = MOODLE_NOTI()
-    moodle.login_moodle()
-    moodle.get_course()
+    while True:
+        try:
+            moodle.login_moodle()
+            moodle.get_course()
+            break
+        except Exception as e:
+            logger.error(f'First login failed: {e}. Retrying...')
+            time.sleep(10)
+            continue
 
-    # Initial fetching of course details
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(threading_get_course_detail, moodle, course['id']) for course in moodle.total_course]
-        DATA_COURSE = []
-        for future in concurrent.futures.as_completed(futures):
-            result = future.result()
-            if result:
-                # Acquire lock before modifying shared data structure
-                with data_course_lock:
-                    DATA_COURSE.append(result)
+    while True:
+        try:
+            # Initial fetching of course details
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                futures = [executor.submit(threading_get_course_detail, moodle, course['id']) for course in moodle.total_course]
+                DATA_COURSE = []
+                for future in concurrent.futures.as_completed(futures):
+                    result = future.result()
+                    if result:
+                        # Acquire lock before modifying shared data structure
+                        with data_course_lock:
+                            DATA_COURSE.append(result)
+            break
+        except Exception as e:
+            logger.error(f'Error in initial fetching of course details: {e}. Retrying...')
+            time.sleep(10)
+            continue
+
     with data_course_lock:
         DATA_COURSE.sort(key=lambda x: x['id'])
     logger.info(f'Get course success. Total courses: {len(DATA_COURSE)}')
